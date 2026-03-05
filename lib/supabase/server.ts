@@ -4,19 +4,23 @@ import { createServerClient } from '@supabase/ssr'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export function createSupabaseServerClient() {
-  const cookieStore = cookies()
+export async function createSupabaseServerClient() {
+  const cookieStore = await cookies() // ⚡ await aici
 
   return createServerClient(supabaseUrl, anonKey, {
     cookies: {
       get(name: string) {
-        return cookieStore.get(name)?.value
+        return cookieStore.get(name)?.value ?? null
       },
-      set(name: string, value: string, options) {
-        cookieStore.set({ name, value, ...options })
+      set() {
+        throw new Error(
+          "Setting cookies requires ResponseCookies in App Router."
+        )
       },
-      remove(name: string, options) {
-        cookieStore.set({ name, value: '', ...options })
+      remove() {
+        throw new Error(
+          "Removing cookies requires ResponseCookies in App Router."
+        )
       },
     },
   })
@@ -26,22 +30,16 @@ export function createSupabaseServerClient() {
  * Obține user-ul curent pe server
  */
 export async function getCurrentUser() {
-  const supabase = createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  return user
+  const supabase = await createSupabaseServerClient() // ⚡ await aici
+  const { data } = await supabase.auth.getUser()
+  return data.user ?? null
 }
 
 /**
  * Obține access token (pentru GraphQL)
  */
 export async function getAccessToken() {
-  const supabase = createSupabaseServerClient()
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  return session?.access_token ?? null
+  const supabase = await createSupabaseServerClient()
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token ?? null
 }
